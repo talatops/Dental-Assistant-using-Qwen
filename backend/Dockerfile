@@ -5,6 +5,11 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# Install system build tools required for llama-cpp-python (C/C++ compiler + CMake)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential cmake && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
