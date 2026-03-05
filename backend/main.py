@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
+from uvicorn.protocols.utils import ClientDisconnected
 
 from .conversation.manager import ConversationManager
 
@@ -81,8 +82,15 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     await websocket.send_json({"type": "token", "token": token})
                     # Allow other tasks to run
                     await asyncio.sleep(0)
+            except (WebSocketDisconnect, ClientDisconnected):
+                # Client went away mid-stream; stop quietly without sending more frames.
+                return
             except Exception as exc:  # noqa: BLE001
-                await websocket.send_json({"type": "error", "message": f"generation error: {exc}"})
+                # Best-effort error frame; if the client has disconnected, just stop.
+                try:
+                    await websocket.send_json({"type": "error", "message": f"generation error: {exc}"})
+                except (WebSocketDisconnect, ClientDisconnected):
+                    return
                 continue
 
             latency = time.time() - start_time
